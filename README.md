@@ -4,13 +4,67 @@ Personal **resilient** MCP server wrapping the FiinQuant Python SDK for **Claude
 
 > Not an official FiinGroup/FiinQuant product. Built for local agent reliability: tool failures return JSON error envelopes instead of hanging or killing the process.
 
+## Quick start (uvx — recommended)
+
+Requires [uv](https://docs.astral.sh/uv/) (`curl -LsSf https://astral.sh/uv/install.sh | sh`).
+
+### Cursor / Claude Desktop / Codex
+
+```json
+{
+  "mcpServers": {
+    "fiinquant": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/luongndcoder/fiinquant-python-mcp",
+        "fiinquant-mcp"
+      ],
+      "env": {
+        "FIINQUANT_USERNAME": "your_user",
+        "FIINQUANT_PASSWORD": "your_pass"
+      }
+    }
+  }
+}
+```
+
+Copy from [`config/mcp.example.json`](config/mcp.example.json).
+
+### CLI smoke
+
+```bash
+# print-help / start stdio (MCP clients talk on stdin — use client config above)
+uvx --from git+https://github.com/luongndcoder/fiinquant-python-mcp fiinquant-mcp
+```
+
+Pin a ref if you want:
+
+```bash
+uvx --from git+https://github.com/luongndcoder/fiinquant-python-mcp@main fiinquant-mcp
+```
+
+### Live data = private FiinQuant SDK
+
+`fiinquant` is **not on public PyPI**. Inject the wheel with `--with`:
+
+```bash
+uvx --from git+https://github.com/luongndcoder/fiinquant-python-mcp \
+  --with /path/to/fiinquant.whl \
+  fiinquant-mcp
+```
+
+MCP config with SDK: [`config/mcp.with-sdk.example.json`](config/mcp.with-sdk.example.json).
+
+Without the SDK, health tools (`fq_ping`, `fq_session_status`) still work; market/universe tools return structured `AUTH` / `INTERNAL` errors instead of crashing.
+
 ## Why
 
 | Layer | Status |
 |-------|--------|
 | FiinQuant **Python SDK** (data) | Works for many users outside MCP |
 | Official / remote FiinQuant MCP | Often unreliable for agent hosts |
-| **This package** | Resilient facade: timeout, re-auth once, size budget, structured errors |
+| **This package** | Resilient facade: timeout, re-auth, size budget, structured errors |
 
 ## Architecture
 
@@ -18,39 +72,16 @@ Personal **resilient** MCP server wrapping the FiinQuant Python SDK for **Claude
 Cursor / Claude Desktop
         │ stdio
         ▼
-  FastMCP tools (fq_*)
+  uvx → fiinquant-mcp (FastMCP)
         │
         ▼
   FiinQuantGateway (session, timeout, error map)
         │
         ▼
-  fiinquant SDK (private install)
+  fiinquant SDK (private wheel via --with)
 ```
 
-## Install
-
-```bash
-cd fiinquant-python-mcp
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-```
-
-### FiinQuant SDK (required for live data)
-
-The `fiinquant` package is **not on public PyPI**. Install your private wheel / internal index the same way you already use outside MCP:
-
-```bash
-pip install /path/to/fiinquant.whl
-# optional inventory:
-python scripts/inventory_fiinquant_sdk.py
-```
-
-If method names differ from defaults, map them in `src/fiinquant_mcp/sdk_client.py` (or inject a custom `client_factory`).
-
-## Configuration
-
-Copy `.env.example` or set env vars in MCP config:
+## Environment
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
@@ -63,25 +94,6 @@ Copy `.env.example` or set env vars in MCP config:
 
 **Never commit real credentials.**
 
-## Cursor / Claude Desktop
-
-See [`config/mcp.example.json`](config/mcp.example.json). Point `command` at this project's venv Python:
-
-```json
-{
-  "mcpServers": {
-    "fiinquant": {
-      "command": "/ABS/PATH/fiinquant-python-mcp/.venv/bin/python",
-      "args": ["-m", "fiinquant_mcp"],
-      "env": {
-        "FIINQUANT_USERNAME": "your_user",
-        "FIINQUANT_PASSWORD": "your_pass"
-      }
-    }
-  }
-}
-```
-
 ## P0 tools
 
 | Tool | Description |
@@ -92,7 +104,7 @@ See [`config/mcp.example.json`](config/mcp.example.json). Point `command` at thi
 | `fq_list_tickers` | Universe list (optional `market`) |
 | `fq_ticker_info` | Single ticker metadata |
 
-All tools return JSON strings:
+Response shape:
 
 ```json
 {"ok": true, "data": ..., "meta": {"truncated": false, "row_count": 10}}
@@ -102,29 +114,26 @@ All tools return JSON strings:
 {"ok": false, "code": "TIMEOUT|AUTH|SDK_ERROR|VALIDATION|INTERNAL", "message": "...", "hint": "..."}
 ```
 
-## Develop / test
+## Local develop
 
 ```bash
-source .venv/bin/activate
-pytest -v
-pytest --cov=fiinquant_mcp --cov-report=term-missing
-```
+git clone https://github.com/luongndcoder/fiinquant-python-mcp.git
+cd fiinquant-python-mcp
+uv sync --extra dev
+uv run pytest -v
 
-Unit tests mock the SDK boundary — no network required.
+# run like production
+uvx --from . fiinquant-mcp
+# or
+uv run fiinquant-mcp
+```
 
 ## Live smoke checklist
 
-1. SDK login works outside MCP with same credentials  
-2. MCP client lists the five `fq_*` tools  
-3. `fq_ping` → `ok`  
-4. `fq_get_price_history` for one ticker, short date range  
-5. Wrong password → `AUTH` / `SDK_ERROR` envelope; process still up  
-
-## Plan
-
-Implementation plan: `plans/20260715-fiinquant-personal-mcp/`.
-
-P1 (later): fundamental, screening, indicators — only after P0 live smoke is green.
+1. `uvx` installs and process starts (MCP client lists tools)
+2. `fq_ping` → `ok`
+3. With SDK + creds: `fq_get_price_history` for one ticker, short range
+4. Tool error → JSON envelope; process still up
 
 ## License
 

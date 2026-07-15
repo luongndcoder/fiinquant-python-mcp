@@ -5,6 +5,8 @@
       "args": [
         "--from",
         "git+https://github.com/luongndcoder/fiinquant-python-mcp",
+        "--with",
+        "/ABS/PATH/to/fiinquant.whl",
         "fiinquant-mcp"
       ],
       "env": {

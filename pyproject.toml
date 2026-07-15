@@ -10,11 +10,17 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Personal" }]
+keywords = ["mcp", "fiinquant", "fastmcp", "stdio"]
 dependencies = [
   "mcp>=1.2.0",
   "pydantic>=2.0",
   "python-dotenv>=1.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/luongndcoder/fiinquant-python-mcp"
+Repository = "https://github.com/luongndcoder/fiinquant-python-mcp"
+Issues = "https://github.com/luongndcoder/fiinquant-python-mcp/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -26,14 +32,19 @@ dev = [
 [project.scripts]
 fiinquant-mcp = "fiinquant_mcp.server:main"
 
+# src-layout package discovery for hatchling / uvx
 [tool.hatch.build.targets.wheel]
 packages = ["src/fiinquant_mcp"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"src/fiinquant_mcp" = "fiinquant_mcp"
-
 [tool.hatch.build.targets.sdist]
-include = ["src/fiinquant_mcp", "README.md", "pyproject.toml", "tests", "config", "scripts"]
+include = [
+  "src/fiinquant_mcp",
+  "README.md",
+  "pyproject.toml",
+  "tests",
+  "config",
+  "scripts",
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
