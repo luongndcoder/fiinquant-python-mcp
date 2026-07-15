@@ -1,6 +1,6 @@
 # Phase 09 — P1 domain expand (after P0 stable)
 
-**Status:** Pending  
+**Status:** Done (2026-07-15) — v0.2.0 ~26 tools  
 **Type:** feature expansion  
 **Depends on:** phase-08 live smoke OK  
 **blockedBy:** phase-08  
@@ -37,9 +37,9 @@ Mở tool surface đa dạng ~ official MCP **sau khi** reliability P0 proven.
 
 ## Success criteria
 
-- [ ] ≥2 domains beyond market/universe
-- [ ] Unit tests green; no regression P0
-- [ ] README catalog updated
+- [x] ≥2 domains beyond market/universe (fundamental + screening/TA + market expand)
+- [x] Unit tests green; no regression P0
+- [x] README catalog updated
 
 ## Evaluation Rubric
 

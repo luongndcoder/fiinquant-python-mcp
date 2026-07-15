@@ -136,7 +136,7 @@ Process **không** exit vì tool error.
 | 06 | [Test review gate — P0 tools](./phase-06-test-review-tools-p0.md) | **user gate** | ✅ Approved (2026-07-15) |
 | 07 | [Implement P0 tools + server entry](./phase-07-impl-tools-p0.md) | impl | ✅ Done (2026-07-15) |
 | 08 | [Docs, mcp config, live smoke](./phase-08-docs-smoke.md) | docs/verify | ✅ Docs done; live smoke = user |
-| 09 | [P1 domain expand](./phase-09-p1-expand.md) | later | Deferred until live smoke OK |
+| 09 | [P1 domain expand](./phase-09-p1-expand.md) | later | ✅ Done v0.2.0 (2026-07-15) |
 
 ## Dependencies
 

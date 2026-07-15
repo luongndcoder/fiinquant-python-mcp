@@ -8,6 +8,7 @@ from typing import Any, Callable, Protocol
 
 from fiinquant_mcp.config import Settings, load_settings
 from fiinquant_mcp.errors import ErrorCode, GatewayError
+from fiinquant_mcp.ops import SUPPORTED_OPS
 
 logger = logging.getLogger(__name__)
 
@@ -22,21 +23,11 @@ _SESSION_EXPIRED_MARKERS = (
 
 
 class FiinQuantClient(Protocol):
-    """Minimal client surface used by the Gateway (injectable for tests)."""
+    """Client surface: named methods and/or generic run(op, **kwargs)."""
 
     def login(self) -> None: ...
 
-    def get_price_history(
-        self,
-        tickers: list[str],
-        start: str,
-        end: str,
-        **kwargs: Any,
-    ) -> Any: ...
-
-    def list_tickers(self, market: str | None = None) -> Any: ...
-
-    def ticker_info(self, ticker: str) -> Any: ...
+    def run(self, op: str, **kwargs: Any) -> Any: ...
 
 
 ClientFactory = Callable[[Settings], FiinQuantClient]
@@ -86,7 +77,7 @@ class FiinQuantGateway:
             client.login()
         except GatewayError:
             raise
-        except Exception as exc:  # noqa: BLE001 — map all SDK login failures
+        except Exception as exc:  # noqa: BLE001
             raise GatewayError(
                 ErrorCode.AUTH,
                 f"Login failed: {exc}",
@@ -99,22 +90,25 @@ class FiinQuantGateway:
         self.ensure_session()
 
     def _dispatch(self, op: str, **kwargs: Any) -> Any:
-        client = self._get_client()
-        if op == "get_price_history":
-            return client.get_price_history(
-                tickers=kwargs["tickers"],
-                start=kwargs["start"],
-                end=kwargs["end"],
-                **{k: v for k, v in kwargs.items() if k not in ("tickers", "start", "end")},
+        if op not in SUPPORTED_OPS and not op.startswith("raw:"):
+            raise GatewayError(
+                ErrorCode.VALIDATION,
+                f"Unknown operation: {op}",
+                hint=f"Supported ops include: {', '.join(SUPPORTED_OPS[:12])}…",
             )
-        if op == "list_tickers":
-            return client.list_tickers(market=kwargs.get("market"))
-        if op == "ticker_info":
-            return client.ticker_info(ticker=kwargs["ticker"])
+        client = self._get_client()
+        # Prefer explicit method on client (tests / typed adapters)
+        method = getattr(client, op, None)
+        if callable(method) and op != "run":
+            return method(**kwargs)
+        # Generic run(op, **kwargs)
+        run = getattr(client, "run", None)
+        if callable(run):
+            return run(op, **kwargs)
         raise GatewayError(
-            ErrorCode.VALIDATION,
-            f"Unknown operation: {op}",
-            hint="Supported: get_price_history, list_tickers, ticker_info",
+            ErrorCode.INTERNAL,
+            f"Client cannot execute op '{op}'",
+            hint="Client needs method '{op}' or run()",
         )
 
     def _is_session_expired(self, exc: BaseException) -> bool:
@@ -175,4 +169,5 @@ class FiinQuantGateway:
             "logged_in": self._logged_in,
             "has_credentials": self.settings.has_credentials,
             "timeout_s": self.settings.timeout_s,
+            "supported_ops": list(SUPPORTED_OPS),
         }
