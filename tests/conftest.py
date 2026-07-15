@@ -16,6 +16,8 @@ def settings() -> Settings:
         max_rows=5,
         max_chars=2000,
         log_level="DEBUG",
+        plan="free",
+        enforce_plan_limits=False,  # unit gateway tests focus on reliability kit
     )
 
 
@@ -27,4 +29,5 @@ def settings_no_creds() -> Settings:
         timeout_s=0.5,
         max_rows=5,
         max_chars=2000,
+        enforce_plan_limits=False,
     )

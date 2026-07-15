@@ -12,6 +12,8 @@
       "env": {
         "FIINQUANT_USERNAME": "your_user",
         "FIINQUANT_PASSWORD": "your_pass",
+        "FIINQUANT_PLAN": "free",
+        "FIINQUANT_ENFORCE_PLAN_LIMITS": "true",
         "FIINQUANT_TIMEOUT_S": "30",
         "FIINQUANT_MAX_ROWS": "500",
         "FIINQUANT_MAX_CHARS": "80000",

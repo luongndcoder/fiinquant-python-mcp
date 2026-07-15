@@ -12,6 +12,7 @@ class ErrorCode(str, Enum):
     TIMEOUT = "TIMEOUT"
     SDK_ERROR = "SDK_ERROR"
     VALIDATION = "VALIDATION"
+    RATE_LIMIT = "RATE_LIMIT"
     INTERNAL = "INTERNAL"
 
 

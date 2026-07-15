@@ -4,7 +4,7 @@ Personal **resilient** MCP server wrapping the FiinQuant / **FiinQuantX** Python
 
 > Not an official FiinGroup/FiinQuant product. Tool surface aligned with official FiinQuant MCP domain tools, with timeout / error envelope / size budget so agent hosts do not hang.
 
-**Version:** 0.2.0 (P0 + P1)
+**Version:** 0.2.1 (P0 + P1 + free-tier guards)
 
 ## Quick start (uvx)
 
@@ -96,12 +96,36 @@ If your SDK method names differ, edit `src/fiinquant_mcp/ops.py` or run:
 python scripts/inventory_fiinquant_sdk.py
 ```
 
+## Free plan limits (default)
+
+MCP defaults match **FiinQuant Trải nghiệm / Miễn phí** so agent tools don't burn quota:
+
+| Limit | Free tier |
+|-------|-----------|
+| Connections | **1** (single Gateway session) |
+| Requests / month | 100,000 (account-side) |
+| Requests / minute | **90** (enforced locally) |
+| Requests / second | **80** (enforced locally) |
+| Realtime tickers / call | **≤ 33** |
+| History depth | **≤ 1 month (~31 days)** |
+| Timeframes | `1m`, `5m`, `15m`, `1h`, `4h` (+ Daily for EOD) |
+
+Over-limit calls return JSON `VALIDATION` or `RATE_LIMIT` with a hint — process stays up.
+
+Upgrade? set `FIINQUANT_PLAN=paid` (or raise the override envs). Disable guards: `FIINQUANT_ENFORCE_PLAN_LIMITS=false`.
+
 ## Environment
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `FIINQUANT_USERNAME` | — | SDK username |
 | `FIINQUANT_PASSWORD` | — | SDK password |
+| `FIINQUANT_PLAN` | `free` | `free` \| `paid` — picks default caps |
+| `FIINQUANT_ENFORCE_PLAN_LIMITS` | `true` | Local rate/history/ticker guards |
+| `FIINQUANT_MAX_HISTORY_DAYS` | `31` (free) | Max `start`→`end` span |
+| `FIINQUANT_MAX_REALTIME_TICKERS` | `33` (free) | Cap per realtime-ish call |
+| `FIINQUANT_REQUESTS_PER_MINUTE` | `90` | Local RPM guard |
+| `FIINQUANT_REQUESTS_PER_SECOND` | `80` | Local RPS guard |
 | `FIINQUANT_TIMEOUT_S` | `30` | Hard timeout per call |
 | `FIINQUANT_MAX_ROWS` | `500` | Max table rows |
 | `FIINQUANT_MAX_CHARS` | `80000` | Max response chars |

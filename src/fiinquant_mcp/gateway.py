@@ -8,6 +8,7 @@ from typing import Any, Callable, Protocol
 
 from fiinquant_mcp.config import Settings, load_settings
 from fiinquant_mcp.errors import ErrorCode, GatewayError
+from fiinquant_mcp.limits import RateLimiter, clamp_date_range_kwargs
 from fiinquant_mcp.ops import SUPPORTED_OPS
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,12 @@ class FiinQuantGateway:
         self._client_factory = client_factory
         self._client: FiinQuantClient | None = None
         self._logged_in = False
+        limits = self.settings.plan_limits()
+        self._rate_limiter = RateLimiter(
+            per_second=limits.requests_per_second,
+            per_minute=limits.requests_per_minute,
+            enabled=limits.enforce,
+        )
 
     @property
     def is_logged_in(self) -> bool:
@@ -117,6 +124,9 @@ class FiinQuantGateway:
 
     def _sync_call(self, op: str, *, allow_reauth: bool, **kwargs: Any) -> Any:
         self.ensure_session()
+        # Free-tier guards (history window, ticker batch, rate)
+        self._rate_limiter.acquire()
+        kwargs = clamp_date_range_kwargs(self.settings.plan_limits(), dict(kwargs))
         try:
             return self._dispatch(op, **kwargs)
         except GatewayError:
@@ -165,9 +175,25 @@ class FiinQuantGateway:
             ) from exc
 
     def session_status(self) -> dict[str, Any]:
+        limits = self.settings.plan_limits()
         return {
             "logged_in": self._logged_in,
             "has_credentials": self.settings.has_credentials,
             "timeout_s": self.settings.timeout_s,
             "supported_ops": list(SUPPORTED_OPS),
+            "plan": {
+                "name": limits.plan,
+                "enforce": limits.enforce,
+                "max_connections": limits.max_connections,
+                "max_history_days": limits.max_history_days,
+                "max_realtime_tickers": limits.max_realtime_tickers,
+                "requests_per_minute": limits.requests_per_minute,
+                "requests_per_second": limits.requests_per_second,
+                "rate": self._rate_limiter.snapshot(),
+                "note": (
+                    "Defaults match FiinQuant free (Trải nghiệm): "
+                    "1 connection, 100k req/month, 90/min, 80/s, "
+                    "realtime ≤33 tickers, history ≤1 month, TF 1m/5m/15m/1h/4h"
+                ),
+            },
         }
