@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "fiinquant": {
+      "command": "/Users/YOU/Documents/AI/fiinquant-python-mcp/.venv/bin/python",
+      "args": ["-m", "fiinquant_mcp"],
+      "env": {
+        "FIINQUANT_USERNAME": "your_user",
+        "FIINQUANT_PASSWORD": "your_pass",
+        "FIINQUANT_TIMEOUT_S": "30",
+        "FIINQUANT_MAX_ROWS": "500",
+        "FIINQUANT_MAX_CHARS": "80000",
+        "FIINQUANT_LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}

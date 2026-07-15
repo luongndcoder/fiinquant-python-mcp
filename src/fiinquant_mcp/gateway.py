@@ -1,0 +1,178 @@
+"""FiinQuant Gateway — session owner, timeouts, error mapping."""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from typing import Any, Callable, Protocol
+
+from fiinquant_mcp.config import Settings, load_settings
+from fiinquant_mcp.errors import ErrorCode, GatewayError
+
+logger = logging.getLogger(__name__)
+
+_SESSION_EXPIRED_MARKERS = (
+    "session expired",
+    "unauthorized",
+    "not logged in",
+    "login required",
+    "token expired",
+    "authentication",
+)
+
+
+class FiinQuantClient(Protocol):
+    """Minimal client surface used by the Gateway (injectable for tests)."""
+
+    def login(self) -> None: ...
+
+    def get_price_history(
+        self,
+        tickers: list[str],
+        start: str,
+        end: str,
+        **kwargs: Any,
+    ) -> Any: ...
+
+    def list_tickers(self, market: str | None = None) -> Any: ...
+
+    def ticker_info(self, ticker: str) -> Any: ...
+
+
+ClientFactory = Callable[[Settings], FiinQuantClient]
+
+
+class FiinQuantGateway:
+    """Owns SDK session lifecycle and applies reliability policy."""
+
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        *,
+        client_factory: ClientFactory | None = None,
+    ) -> None:
+        self.settings = settings if settings is not None else load_settings()
+        self._client_factory = client_factory
+        self._client: FiinQuantClient | None = None
+        self._logged_in = False
+
+    @property
+    def is_logged_in(self) -> bool:
+        return self._logged_in
+
+    def _get_client(self) -> FiinQuantClient:
+        if self._client is None:
+            if self._client_factory is None:
+                raise GatewayError(
+                    ErrorCode.INTERNAL,
+                    "No FiinQuant client factory configured",
+                    hint="Install SDK and configure default factory, or inject client_factory for tests",
+                )
+            self._client = self._client_factory(self.settings)
+        return self._client
+
+    def ensure_session(self) -> None:
+        """Lazy login. Raises GatewayError(AUTH) if credentials missing."""
+        if not self.settings.has_credentials:
+            raise GatewayError(
+                ErrorCode.AUTH,
+                "Missing FiinQuant credentials",
+                hint="Set FIINQUANT_USERNAME and FIINQUANT_PASSWORD",
+            )
+        if self._logged_in:
+            return
+        client = self._get_client()
+        try:
+            client.login()
+        except GatewayError:
+            raise
+        except Exception as exc:  # noqa: BLE001 — map all SDK login failures
+            raise GatewayError(
+                ErrorCode.AUTH,
+                f"Login failed: {exc}",
+                hint="Check credentials and SDK install",
+            ) from exc
+        self._logged_in = True
+
+    def _force_relogin(self) -> None:
+        self._logged_in = False
+        self.ensure_session()
+
+    def _dispatch(self, op: str, **kwargs: Any) -> Any:
+        client = self._get_client()
+        if op == "get_price_history":
+            return client.get_price_history(
+                tickers=kwargs["tickers"],
+                start=kwargs["start"],
+                end=kwargs["end"],
+                **{k: v for k, v in kwargs.items() if k not in ("tickers", "start", "end")},
+            )
+        if op == "list_tickers":
+            return client.list_tickers(market=kwargs.get("market"))
+        if op == "ticker_info":
+            return client.ticker_info(ticker=kwargs["ticker"])
+        raise GatewayError(
+            ErrorCode.VALIDATION,
+            f"Unknown operation: {op}",
+            hint="Supported: get_price_history, list_tickers, ticker_info",
+        )
+
+    def _is_session_expired(self, exc: BaseException) -> bool:
+        msg = str(exc).lower()
+        return any(m in msg for m in _SESSION_EXPIRED_MARKERS)
+
+    def _sync_call(self, op: str, *, allow_reauth: bool, **kwargs: Any) -> Any:
+        self.ensure_session()
+        try:
+            return self._dispatch(op, **kwargs)
+        except GatewayError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            if allow_reauth and self._is_session_expired(exc):
+                logger.info("session expired heuristic matched; re-auth once")
+                self._force_relogin()
+                try:
+                    return self._dispatch(op, **kwargs)
+                except GatewayError:
+                    raise
+                except Exception as exc2:  # noqa: BLE001
+                    raise GatewayError(
+                        ErrorCode.SDK_ERROR,
+                        str(exc2),
+                        hint="SDK call failed after re-auth",
+                    ) from exc2
+            raise GatewayError(
+                ErrorCode.SDK_ERROR,
+                str(exc),
+                hint="Inspect SDK error; reduce payload or retry",
+            ) from exc
+
+    async def call(self, op: str, **kwargs: Any) -> Any:
+        """Run a named SDK operation with timeout + re-auth."""
+        timeout = self.settings.timeout_s
+        try:
+            return await asyncio.wait_for(
+                asyncio.to_thread(self._sync_call, op, allow_reauth=True, **kwargs),
+                timeout=timeout,
+            )
+        except TimeoutError as exc:
+            raise GatewayError(
+                ErrorCode.TIMEOUT,
+                f"Operation '{op}' exceeded {timeout}s",
+                hint="Increase FIINQUANT_TIMEOUT_S or narrow date range / tickers",
+            ) from exc
+        except GatewayError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            raise GatewayError(
+                ErrorCode.INTERNAL,
+                str(exc),
+                hint="Unexpected gateway failure",
+            ) from exc
+
+    def session_status(self) -> dict[str, Any]:
+        return {
+            "logged_in": self._logged_in,
+            "has_credentials": self.settings.has_credentials,
+            "timeout_s": self.settings.timeout_s,
+        }

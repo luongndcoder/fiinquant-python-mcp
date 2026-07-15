@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fiinquant-mcp"
+version = "0.1.0"
+description = "Personal resilient FastMCP server wrapping the FiinQuant Python SDK"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Personal" }]
+dependencies = [
+  "mcp>=1.2.0",
+  "pydantic>=2.0",
+  "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-asyncio>=0.24",
+  "pytest-cov>=5.0",
+]
+
+[project.scripts]
+fiinquant-mcp = "fiinquant_mcp.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fiinquant_mcp"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/fiinquant_mcp" = "fiinquant_mcp"
+
+[tool.hatch.build.targets.sdist]
+include = ["src/fiinquant_mcp", "README.md", "pyproject.toml", "tests", "config", "scripts"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.coverage.run]
+source = ["fiinquant_mcp"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
