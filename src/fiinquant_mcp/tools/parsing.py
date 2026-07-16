@@ -15,23 +15,36 @@ def parse_tickers(tickers: str | list[str] | None) -> list[str]:
     return [p for p in parts if p]
 
 
-def parse_jsonish(value: str | None) -> Any:
-    """Parse optional JSON string; return None if empty; raise ValueError if invalid."""
+def parse_jsonish(value: Any) -> Any:
+    """Parse optional JSON string or pass through objects; None if empty."""
     if value is None:
         return None
-    text = value.strip()
+    if isinstance(value, (dict, list, int, float, bool)):
+        return value
+    text = str(value).strip()
     if not text:
         return None
     return json.loads(text)
 
 
-def parse_str_list(value: str | None) -> list[str] | None:
-    if value is None or not str(value).strip():
+def parse_str_list(value: str | list[str] | None) -> list[str] | None:
+    if value is None:
+        return None
+    if isinstance(value, list):
+        out = [str(p).strip() for p in value if str(p).strip()]
+        return out or None
+    if not str(value).strip():
         return None
     return [p.strip() for p in str(value).replace(";", ",").split(",") if p.strip()]
 
 
-def parse_int_list(value: str | None) -> list[int] | None:
+def parse_int_list(value: str | list[int] | list[str] | None) -> list[int] | None:
+    if value is None:
+        return None
+    if isinstance(value, list):
+        if not value:
+            return None
+        return [int(x) for x in value]
     items = parse_str_list(value)
     if items is None:
         return None

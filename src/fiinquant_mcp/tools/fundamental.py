@@ -1,11 +1,13 @@
-"""Fundamental / valuation tools."""
+"""Fundamental / valuation tools (official names)."""
 
 from __future__ import annotations
+
+from typing import Any
 
 from fiinquant_mcp.errors import ErrorCode, error_json
 from fiinquant_mcp.gateway import FiinQuantGateway
 from fiinquant_mcp.tools._common import resolve_gateway, run_gateway_op
-from fiinquant_mcp.tools.parsing import parse_int_list, parse_jsonish, parse_str_list, parse_tickers
+from fiinquant_mcp.tools.parsing import parse_int_list, parse_str_list, parse_tickers
 
 _STATEMENT_TYPES = {
     "income_statement",
@@ -16,14 +18,13 @@ _STATEMENT_TYPES = {
 }
 
 
-async def fq_get_financial_ratios(
-    tickers: str,
-    years: str | None = None,
-    quarters: str | None = None,
+async def get_financial_ratios(
+    tickers: str | list[str],
+    years: str | list[int] | list[str] | None = None,
+    quarters: str | list[str] | None = None,
     *,
     gateway: FiinQuantGateway | None = None,
 ) -> str:
-    """Financial ratios (ROE, ROA, PE, …). years/quarters optional CSV."""
     parsed = parse_tickers(tickers)
     if not parsed:
         return error_json(ErrorCode.VALIDATION, "tickers is required")
@@ -42,16 +43,17 @@ async def fq_get_financial_ratios(
     )
 
 
-async def fq_get_financial_statements(
-    tickers: str,
+async def get_financial_statements(
+    tickers: str | list[str],
     statement: str,
-    years: str | None = None,
-    quarters: str | None = None,
+    years: str | list[int] | list[str] | None = None,
+    quarters: str | list[str] | None = None,
     audited: bool | None = None,
+    type: str | None = None,  # noqa: A002 — official param name
+    fields: str | list[str] | None = None,
     *,
     gateway: FiinQuantGateway | None = None,
 ) -> str:
-    """BCTC: income_statement | balance_sheet | cashflow | full | note."""
     parsed = parse_tickers(tickers)
     if not parsed:
         return error_json(ErrorCode.VALIDATION, "tickers is required")
@@ -75,12 +77,14 @@ async def fq_get_financial_statements(
         years=years_list,
         quarters=quarters_list,
         audited=audited,
+        type=type,
+        fields=parse_str_list(fields),
     )
 
 
-async def fq_get_valuation_timeseries(
+async def get_valuation_timeseries(
     scope: str,
-    tickers: str | None = None,
+    tickers: str | list[str] | None = None,
     index: str | None = None,
     from_date: str | None = None,
     to_date: str | None = None,
@@ -88,13 +92,9 @@ async def fq_get_valuation_timeseries(
     *,
     gateway: FiinQuantGateway | None = None,
 ) -> str:
-    """Valuation history for stock | index | sector scope."""
     sc = (scope or "").strip().lower()
     if sc not in {"stock", "index", "sector"}:
-        return error_json(
-            ErrorCode.VALIDATION,
-            "scope must be stock|index|sector",
-        )
+        return error_json(ErrorCode.VALIDATION, "scope must be stock|index|sector")
     gw = resolve_gateway(gateway)
     return await run_gateway_op(
         gw,
@@ -108,27 +108,31 @@ async def fq_get_valuation_timeseries(
     )
 
 
-async def fq_get_equity_snapshot(
-    tickers: str,
-    metrics: str | None = None,
+async def get_equity_snapshot(
+    tickers: str | list[str],
+    metrics: str | list[str] | None = None,
     as_of_date: str | None = None,
     limit: int | None = None,
     offset: int | None = None,
     *,
     gateway: FiinQuantGateway | None = None,
 ) -> str:
-    """Point-in-time snapshot (pe/pb, market_cap, liquidity, foreign room, …)."""
     parsed = parse_tickers(tickers)
     if not parsed:
         return error_json(ErrorCode.VALIDATION, "tickers is required")
-    metrics_list = parse_str_list(metrics)
     gw = resolve_gateway(gateway)
     return await run_gateway_op(
         gw,
         "get_equity_snapshot",
         tickers=parsed,
-        metrics=metrics_list,
+        metrics=parse_str_list(metrics),
         as_of_date=as_of_date,
         limit=limit,
         offset=offset,
     )
+
+
+fq_get_financial_ratios = get_financial_ratios
+fq_get_financial_statements = get_financial_statements
+fq_get_valuation_timeseries = get_valuation_timeseries
+fq_get_equity_snapshot = get_equity_snapshot

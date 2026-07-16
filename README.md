@@ -2,13 +2,11 @@
 
 Personal **resilient** MCP server wrapping the FiinQuant / **FiinQuantX** Python SDK for **Claude Desktop / Cursor** (stdio).
 
-> Not an official FiinGroup/FiinQuant product. Tool surface aligned with official FiinQuant MCP domain tools, with timeout / error envelope / size budget so agent hosts do not hang.
+> Not an official FiinGroup/FiinQuant product. **Domain tool names match official FiinQuant MCP**; personal extras keep the `fq_` prefix.
 
-**Version:** 0.2.1 (P0 + P1 + free-tier guards)
+**Version:** 0.3.0
 
 ## Quick start (uvx)
-
-Requires [uv](https://docs.astral.sh/uv/).
 
 ```json
 {
@@ -22,120 +20,83 @@ Requires [uv](https://docs.astral.sh/uv/).
       ],
       "env": {
         "FIINQUANT_USERNAME": "your_user",
-        "FIINQUANT_PASSWORD": "your_pass"
+        "FIINQUANT_PASSWORD": "your_pass",
+        "FIINQUANT_PLAN": "free"
       }
     }
   }
 }
 ```
 
-Live data needs the **private SDK wheel**:
+Live data needs private SDK: add `"--with", "/path/to/FiinQuantX.whl"` before `fiinquant-mcp`.
 
-```json
-"args": [
-  "--from", "git+https://github.com/luongndcoder/fiinquant-python-mcp",
-  "--with", "/ABS/PATH/to/FiinQuantX.whl",
-  "fiinquant-mcp"
-]
-```
+## Tools
 
-See `config/mcp.example.json` and `config/mcp.with-sdk.example.json`.
+### Official names (21) — same as FiinQuant MCP
 
-## Tools (P0 + P1)
+| Tool | Role |
+|------|------|
+| `get_stock_prices` | Primary OHLCV / latest price |
+| `get_market_statistics` | market_cap, volume/value |
+| `get_market_breadth` | Advance/decline breadth |
+| `get_index_constituents` | e.g. VN30 members |
+| `get_money_flow_contribution` | Index contribution / flow |
+| `get_realtime_bid_ask` | Bid/ask snapshot |
+| `get_basic_info` | Company / ICB basics |
+| `get_icb_industries` | ICB industry list |
+| `get_financial_ratios` | Ratios (ROE, PE, …) |
+| `get_financial_statements` | BCTC income/balance/cashflow/full/note |
+| `get_valuation_timeseries` | Valuation history |
+| `get_equity_snapshot` | Point-in-time pe/pb/liquidity… |
+| `screen_stocks` | Stock screening filters |
+| `get_technical_indicators` | RSI, MACD, SMA… |
+| `detect_pattern` | Candle / pattern |
+| `get_rrg_analysis` | RRG vs benchmark |
+| `get_rebalance` | Index rebalance budget |
+| `run_custom_analysis` | Custom analyses |
+| `fiinquantx_search_methods` | Discover SDK methods |
+| `fiinquantx_call_method` | Call method by id |
+| `report_issue` | Issue report (**local log only**) |
 
-| Domain | Tools |
-|--------|--------|
-| **Health** | `fq_ping`, `fq_session_status`, `fq_list_ops` |
-| **Market** | `fq_get_price_history`, `fq_get_stock_prices`, `fq_get_market_statistics`, `fq_get_market_breadth`, `fq_get_index_constituents`, `fq_get_money_flow_contribution`, `fq_get_realtime_bid_ask` |
-| **Universe** | `fq_list_tickers`, `fq_ticker_info`, `fq_get_basic_info`, `fq_get_icb_industries` |
-| **Fundamental** | `fq_get_financial_ratios`, `fq_get_financial_statements`, `fq_get_valuation_timeseries`, `fq_get_equity_snapshot` |
-| **Screen / TA** | `fq_screen_stocks`, `fq_get_technical_indicators`, `fq_detect_pattern`, `fq_get_rrg_analysis`, `fq_get_rebalance`, `fq_run_custom_analysis` |
-| **Meta** | `fq_search_methods`, `fq_call_method` |
+### Personal extras (6) — kept on purpose
 
-**~26 tools** total. Names use `fq_` prefix; semantics match official FiinQuant MCP domain tools.
+| Tool | Role |
+|------|------|
+| `fq_ping` | Process health |
+| `fq_session_status` | Session + free-tier plan status |
+| `fq_list_ops` | Gateway op catalog |
+| `fq_get_price_history` | Simple OHLCV `start`/`end` helper |
+| `fq_list_tickers` | List tickers by market |
+| `fq_ticker_info` | Single ticker metadata |
 
-### Examples
+**Total: 27 tools** (21 official + 6 extras).
 
-```text
-fq_get_stock_prices tickers=FPT,VNM latest=true
-fq_get_financial_ratios tickers=FPT years=2023,2024
-fq_get_financial_statements tickers=FPT statement=income_statement
-fq_screen_stocks filters=[{"indicator":"roe","operator":"gt","value":20}] limit=30
-fq_get_technical_indicators tickers=VNM indicators=[{"name":"rsi","window":14}]
-fq_get_index_constituents index=VN30
-```
+`tickers` accepts JSON array `["FPT","VNM"]` or CSV `"FPT,VNM"`.
 
-Responses:
+## Free plan guards (default)
 
-```json
-{"ok": true, "data": ..., "meta": {"truncated": false, "row_count": 10}}
-```
+| Limit | Free |
+|-------|------|
+| Connections | 1 |
+| Req/min · req/s | 90 · 80 |
+| Realtime tickers | ≤33 |
+| History depth | ≤31 days |
+| Timeframes | 1m, 5m, 15m, 1h, 4h (+ Daily) |
 
-```json
-{"ok": false, "code": "TIMEOUT|AUTH|SDK_ERROR|VALIDATION|INTERNAL", "message": "...", "hint": "..."}
-```
+See `FIINQUANT_PLAN`, `FIINQUANT_ENFORCE_PLAN_LIMITS` in `.env.example`.
 
-## Architecture
+## Still different from official (by design)
 
-```
-Cursor / Claude Desktop
-        │ stdio
-        ▼
-  uvx → fiinquant-mcp (FastMCP tools)
-        │
-        ▼
-  FiinQuantGateway (session, timeout, re-auth, size budget)
-        │
-        ▼
-  ops.py aliases → FiinQuantX / fiinquant SDK methods
-```
-
-If your SDK method names differ, edit `src/fiinquant_mcp/ops.py` or run:
-
-```bash
-python scripts/inventory_fiinquant_sdk.py
-```
-
-## Free plan limits (default)
-
-MCP defaults match **FiinQuant Trải nghiệm / Miễn phí** so agent tools don't burn quota:
-
-| Limit | Free tier |
-|-------|-----------|
-| Connections | **1** (single Gateway session) |
-| Requests / month | 100,000 (account-side) |
-| Requests / minute | **90** (enforced locally) |
-| Requests / second | **80** (enforced locally) |
-| Realtime tickers / call | **≤ 33** |
-| History depth | **≤ 1 month (~31 days)** |
-| Timeframes | `1m`, `5m`, `15m`, `1h`, `4h` (+ Daily for EOD) |
-
-Over-limit calls return JSON `VALIDATION` or `RATE_LIMIT` with a hint — process stays up.
-
-Upgrade? set `FIINQUANT_PLAN=paid` (or raise the override envs). Disable guards: `FIINQUANT_ENFORCE_PLAN_LIMITS=false`.
-
-## Environment
-
-| Variable | Default | Meaning |
-|----------|---------|---------|
-| `FIINQUANT_USERNAME` | — | SDK username |
-| `FIINQUANT_PASSWORD` | — | SDK password |
-| `FIINQUANT_PLAN` | `free` | `free` \| `paid` — picks default caps |
-| `FIINQUANT_ENFORCE_PLAN_LIMITS` | `true` | Local rate/history/ticker guards |
-| `FIINQUANT_MAX_HISTORY_DAYS` | `31` (free) | Max `start`→`end` span |
-| `FIINQUANT_MAX_REALTIME_TICKERS` | `33` (free) | Cap per realtime-ish call |
-| `FIINQUANT_REQUESTS_PER_MINUTE` | `90` | Local RPM guard |
-| `FIINQUANT_REQUESTS_PER_SECOND` | `80` | Local RPS guard |
-| `FIINQUANT_TIMEOUT_S` | `30` | Hard timeout per call |
-| `FIINQUANT_MAX_ROWS` | `500` | Max table rows |
-| `FIINQUANT_MAX_CHARS` | `80000` | Max response chars |
-| `FIINQUANT_LOG_LEVEL` | `INFO` | stderr logs |
+| | Official | This MCP |
+|--|----------|----------|
+| Auth | Browser / OIDC remote | Local SDK username/password |
+| Transport | Remote Streamable HTTP | stdio via `uvx` |
+| Reliability | Vendor | Timeout, envelope, size budget |
+| `report_issue` | Uploads to admin | **Local stderr log only** |
 
 ## Develop
 
 ```bash
-git clone https://github.com/luongndcoder/fiinquant-python-mcp.git
-cd fiinquant-python-mcp
 uv sync --extra dev
 uv run pytest -v
 uvx --from . fiinquant-mcp
@@ -143,4 +104,4 @@ uvx --from . fiinquant-mcp
 
 ## License
 
-MIT for this wrapper only. FiinQuant SDK and market data remain under FiinQuant terms.
+MIT for this wrapper only. FiinQuant SDK/data under FiinQuant terms.
