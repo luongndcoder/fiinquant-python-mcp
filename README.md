@@ -198,11 +198,24 @@ flowchart LR
 
 ---
 
-## Free plan notes (Trải nghiệm / Miễn phí)
+## Plans: free vs paid / higher tiers
 
-Local guards (MCP) + account API permissions (FiinQuant) both apply.
+**MCP không khóa “free-only”.** Cả 27 tool luôn được expose. Free chỉ là **mặc định an toàn** (local guards + API account chặn một phần). Gói cao hơn → cùng MCP, **mở thêm data** khi FiinQuant cấp permission.
 
-### Local guards (`FIINQUANT_PLAN=free`)
+Hai lớp độc lập:
+
+| Lớp | Ai kiểm soát | Free | Paid / gói cao |
+|-----|----------------|------|----------------|
+| **Local guards** (MCP Gateway) | Env `FIINQUANT_PLAN`, `FIINQUANT_*` limits | Siết history/rate/ticker | Nới hoặc tắt |
+| **API permission** (FiinQuant cloud) | Gói account trên FiinQuant | Nhiều endpoint 403 | Tool trước đó 403 → trả data |
+
+```text
+Upgrade account FiinQuant  +  FIINQUANT_PLAN=paid  →  full surface dùng được (theo đúng quyền gói)
+```
+
+### Local guards
+
+#### `FIINQUANT_PLAN=free` (default)
 
 | Limit | Value |
 |-------|--------|
@@ -213,6 +226,23 @@ Local guards (MCP) + account API permissions (FiinQuant) both apply.
 | Intraday TF | `1m`, `5m`, `15m`, `1h`, `4h` (+ Daily) |
 
 Over limit → JSON `VALIDATION` or `RATE_LIMIT` (process does **not** crash).
+
+#### `FIINQUANT_PLAN=paid` (hoặc gói cao hơn)
+
+```toml
+# Codex / Grok env block
+FIINQUANT_PLAN = "paid"
+# optional: nới tay nếu gói cho phép
+# FIINQUANT_MAX_HISTORY_DAYS = "365"
+# FIINQUANT_MAX_REALTIME_TICKERS = "200"
+# FIINQUANT_REQUESTS_PER_MINUTE = "600"
+# FIINQUANT_REQUESTS_PER_SECOND = "200"
+
+# hoặc giữ plan=free nhưng tắt local guard (cẩn thận quota):
+# FIINQUANT_ENFORCE_PLAN_LIMITS = "false"
+```
+
+`paid` nới default local caps (history dài hơn, rate/ticker cao hơn). **Quyền API thật** vẫn do gói FiinQuant quyết định — MCP không fake data.
 
 ### Live suite (account free) — tool status
 
@@ -233,21 +263,28 @@ Tested end-to-end with FiinQuantX + free account (see `plans/.../tool-test-repor
 - `get_technical_indicators`, `detect_pattern`
 - `get_market_statistics`, health/meta tools
 
-**Often 403 on free (need higher plan):**
+**Often 403 on free — expect data on higher plans:**
 
-| Tool | Typical error |
-|------|----------------|
-| `get_basic_info` / `fq_ticker_info` | ApiAccessFailed 403 |
-| `screen_stocks` | Screening API 403 |
-| `get_market_breadth` | No permission MarketBreadth |
-| `get_money_flow_contribution` | No permission MoneyFlow |
-| `get_index_constituents` | 403 |
+| Tool | Typical free error | After upgrade |
+|------|--------------------|---------------|
+| `get_basic_info` / `fq_ticker_info` | ApiAccessFailed 403 | Company / ICB metadata |
+| `screen_stocks` | Screening API 403 | Filter ROE/PE/… |
+| `get_market_breadth` | No permission MarketBreadth | Advance/decline |
+| `get_money_flow_contribution` | No permission MoneyFlow | Top gainers/losers flow |
+| `get_index_constituents` | 403 | VN30 members, … |
 
-Envelope example when blocked:
+Envelope when blocked (tool path still healthy):
 
 ```json
 {"ok": false, "code": "SDK_ERROR", "message": "…permission…", "hint": "…"}
 ```
+
+**Checklist sau khi nâng gói FiinQuant:**
+
+1. Set `FIINQUANT_PLAN=paid` (và/hoặc nới `FIINQUANT_MAX_*`) trong env MCP.
+2. Restart client session (Codex / Grok / Cursor).
+3. Gọi lại tool từng 403 (vd `screen_stocks`, `get_basic_info`).
+4. Nếu vẫn 403 → gói account chưa mở đúng API (không phải MCP thiếu tool).
 
 ---
 
