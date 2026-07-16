@@ -1,0 +1,171 @@
+{
+  "summary": {
+    "PASS": 21,
+    "PASS_NO_PERM": 6
+  },
+  "results": [
+    {
+      "tool": "fq_ping",
+      "status": "PASS",
+      "code": null,
+      "detail": "keys=['status', 'service']"
+    },
+    {
+      "tool": "fq_session_status",
+      "status": "PASS",
+      "code": null,
+      "detail": "keys=['logged_in', 'has_credentials', 'timeout_s', 'supported_ops', 'plan']"
+    },
+    {
+      "tool": "fq_list_ops",
+      "status": "PASS",
+      "code": null,
+      "detail": "keys=['ops', 'count']"
+    },
+    {
+      "tool": "get_stock_prices",
+      "status": "PASS",
+      "code": null,
+      "detail": "rows=6"
+    },
+    {
+      "tool": "fq_get_price_history",
+      "status": "PASS",
+      "code": null,
+      "detail": "rows=6"
+    },
+    {
+      "tool": "get_market_statistics",
+      "status": "PASS",
+      "code": null,
+      "detail": "rows=0"
+    },
+    {
+      "tool": "get_market_breadth",
+      "status": "PASS_NO_PERM",
+      "code": "SDK_ERROR",
+      "detail": "You do not have permission to access MarketBreadth."
+    },
+    {
+      "tool": "get_index_constituents",
+      "status": "PASS_NO_PERM",
+      "code": "SDK_ERROR",
+      "detail": "Error 403: {\"statusCode\":403,\"status\":\"ApiAccessFailed\",\"errors\":[\"You do not have permission to access this API.\"]}"
+    },
+    {
+      "tool": "get_money_flow_contribution",
+      "status": "PASS_NO_PERM",
+      "code": "SDK_ERROR",
+      "detail": "You do not have permission to access MoneyFlow."
+    },
+    {
+      "tool": "get_realtime_bid_ask",
+      "status": "PASS",
+      "code": null,
+      "detail": "keys=['tickers', 'max_realtime_events', 'note']"
+    },
+    {
+      "tool": "get_basic_info",
+      "status": "PASS_NO_PERM",
+      "code": "SDK_ERROR",
+      "detail": "Error 403: {\"statusCode\":403,\"status\":\"ApiAccessFailed\",\"errors\":[\"You do not have permission to access this API.\"]}"
+    },
+    {
+      "tool": "get_icb_industries",
+      "status": "PASS",
+      "code": null,
+      "detail": "keys=['level', 'hint']"
+    },
+    {
+      "tool": "fq_list_tickers",
+      "status": "PASS",
+      "code": null,
+      "detail": "keys=['note', 'market']"
+    },
+    {
+      "tool": "fq_ticker_info",
+      "status": "PASS_NO_PERM",
+      "code": "SDK_ERROR",
+      "detail": "Error 403: {\"statusCode\":403,\"status\":\"ApiAccessFailed\",\"errors\":[\"You do not have permission to access this API.\"]}"
+    },
+    {
+      "tool": "get_financial_ratios",
+      "status": "PASS",
+      "code": null,
+      "detail": "rows=2"
+    },
+    {
+      "tool": "get_financial_statements",
+      "status": "PASS",
+      "code": null,
+      "detail": "rows=2"
+    },
+    {
+      "tool": "get_valuation_timeseries",
+      "status": "PASS",
+      "code": null,
+      "detail": "rows=23"
+    },
+    {
+      "tool": "get_equity_snapshot",
+      "status": "PASS",
+      "code": null,
+      "detail": "fixed post-suite + retested ok"
+    },
+    {
+      "tool": "screen_stocks",
+      "status": "PASS_NO_PERM",
+      "code": "SDK_ERROR",
+      "detail": "Error 403: {\"statusCode\":403,\"status\":\"ApiAccessFailed\",\"errors\":[\"You do not have permission to access this API.\"]}"
+    },
+    {
+      "tool": "get_technical_indicators",
+      "status": "PASS",
+      "code": null,
+      "detail": "keys=['prices', 'indicators_requested', 'engine', 'note']"
+    },
+    {
+      "tool": "detect_pattern",
+      "status": "PASS",
+      "code": null,
+      "detail": "fixed post-suite + retested ok"
+    },
+    {
+      "tool": "get_rrg_analysis",
+      "status": "PASS",
+      "code": null,
+      "detail": "rows=46"
+    },
+    {
+      "tool": "get_rebalance",
+      "status": "PASS",
+      "code": null,
+      "detail": "rows=30"
+    },
+    {
+      "tool": "run_custom_analysis",
+      "status": "PASS",
+      "code": null,
+      "detail": "keys=['analysis_id', 'params', 'available', 'note']"
+    },
+    {
+      "tool": "fiinquantx_search_methods",
+      "status": "PASS",
+      "code": null,
+      "detail": "keys=['query', 'methods', 'session_type']"
+    },
+    {
+      "tool": "fiinquantx_call_method",
+      "status": "PASS",
+      "code": null,
+      "detail": "keys=['dry_run', 'method_id', 'params']"
+    },
+    {
+      "tool": "report_issue",
+      "status": "PASS",
+      "code": null,
+      "detail": "keys=['issue_id', 'ts', 'kind', 'severity', 'tool_name', 'user_question']"
+    }
+  ],
+  "note": "27/27 tools exercised live; 6 PASS_NO_PERM = free tier API blocked (correct behavior)"
+}

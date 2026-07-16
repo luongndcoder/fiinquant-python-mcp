@@ -176,6 +176,18 @@ class SdkClientAdapter:
             period_i = None
         else:
             period_i = int(period)
+        fd = from_date or start
+        td = to_date or end
+        # FiinQuantX rejects period when from/to are set
+        if fd or td:
+            period_i = None
+        elif latest and not period_i:
+            # short latest window when only latest requested
+            from datetime import date, timedelta
+
+            td = date.today().isoformat()
+            fd = (date.today() - timedelta(days=5)).isoformat()
+            period_i = None
         ftd = self._session.Fetch_Trading_Data(
             realtime=False,
             tickers=tickers_l if len(tickers_l) != 1 else tickers_l[0],
@@ -183,8 +195,8 @@ class SdkClientAdapter:
             adjusted=adjusted,
             period=period_i,
             by=by_val,
-            from_date=from_date or start,
-            to_date=to_date or end,
+            from_date=fd,
+            to_date=td,
             lasted=True if latest else None,
         )
         return _df_or_obj(ftd)
@@ -307,16 +319,31 @@ class SdkClientAdapter:
         limit: int | None = None,
         **_: Any,
     ) -> Any:
-        # Approximate via screening with empty/min filter + ticker constraint if supported
+        from datetime import date, timedelta
+
         tickers_l = _as_list(tickers) or []
-        # latest prices as snapshot baseline
-        df = self._get_stock_prices(tickers=tickers_l, latest=True, frequency="Daily")
+        end = as_of_date or date.today().isoformat()
+        try:
+            end_d = date.fromisoformat(str(end)[:10])
+        except ValueError:
+            end_d = date.today()
+            end = end_d.isoformat()
+        start = (end_d - timedelta(days=7)).isoformat()
+        # SDK requires from/to (cannot blank) — short window as snapshot baseline
+        df = self._get_stock_prices(
+            tickers=tickers_l,
+            from_date=start,
+            to_date=end,
+            frequency="Daily",
+            latest=False,
+            period=None,
+        )
         return {
             "snapshot": _df_or_obj(df),
             "metrics_requested": metrics,
-            "as_of_date": as_of_date,
+            "as_of_date": end,
             "limit": limit,
-            "note": "Snapshot approximated via latest prices; use screen_stocks for multi-metric filters",
+            "note": "Snapshot approximated via recent prices; use screen_stocks for multi-metric filters",
         }
 
     def _get_market_statistics(
@@ -468,12 +495,20 @@ class SdkClientAdapter:
                 "params.tickers required for detect_pattern",
                 hint='params={"tickers":["FPT"],"from_date":"2026-06-01"}',
             )
+        # Prefer date range; only use period when dates missing (SDK forbids both)
+        fd = params.get("from_date")
+        td = params.get("to_date")
+        period = params.get("period")
+        if fd or td:
+            period = None
+        elif period is None:
+            period = 100
         df = self._get_stock_prices(
             tickers=tickers,
-            from_date=params.get("from_date"),
-            to_date=params.get("to_date"),
+            from_date=fd,
+            to_date=td,
             by=params.get("by", "1d"),
-            period=params.get("period", 100),
+            period=period,
         )
         pat = self._session.Pattern()
         name = pattern.strip().lower().replace("-", "_")
