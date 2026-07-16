@@ -13,6 +13,16 @@ Personal **resilient** MCP server wrapping the FiinQuant / **FiinQuantX** Python
 
 **Version:** 0.3.1 · **Tools:** 27 (21 official + 6 extras)
 
+### AI-assisted install (Codex / Claude Code / Grok / Cursor)
+
+User không cần đọc hết docs. Copy prompt trong:
+
+**[`docs/AI_INSTALL_PROMPT.md`](docs/AI_INSTALL_PROMPT.md)**
+
+→ dán vào agent → AI tự detect Python, `pip install -e`, đăng ký MCP (Codex/Grok/Claude/Cursor), smoke `fq_ping` / `get_stock_prices`.
+
+Có bản **full** (chi tiết) và **short** (1 đoạn) trong file đó.
+
 ---
 
 ## How it works
