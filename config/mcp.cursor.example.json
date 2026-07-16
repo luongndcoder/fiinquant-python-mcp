@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "fiinquant-sdk": {
+      "command": "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3",
+      "args": ["-m", "fiinquant_mcp"],
+      "env": {
+        "FIINQUANT_USERNAME": "your@email.com",
+        "FIINQUANT_PASSWORD": "your_password",
+        "FIINQUANT_PLAN": "free",
+        "FIINQUANT_ENFORCE_PLAN_LIMITS": "true"
+      }
+    }
+  }
+}

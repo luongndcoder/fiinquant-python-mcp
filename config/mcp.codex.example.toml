@@ -1,0 +1,20 @@
+# Codex CLI — ~/.codex/config.toml
+# Install: pip install -e . into the same Python that has FiinQuantX
+# Then either:
+#   codex mcp add fiinquant-sdk --env FIINQUANT_USERNAME=... --env FIINQUANT_PASSWORD=... \
+#     -- /path/to/python3 -m fiinquant_mcp
+# or paste the block below.
+
+# Name is intentional: "fiinquant-sdk" (this personal MCP).
+# Official remote proxy (if any) often uses "fiinquant-local" — keep both if needed.
+
+[mcp_servers.fiinquant-sdk]
+command = "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3"
+args = ["-m", "fiinquant_mcp"]
+# optional: startup_timeout_sec = 60
+
+[mcp_servers.fiinquant-sdk.env]
+FIINQUANT_USERNAME = "your@email.com"
+FIINQUANT_PASSWORD = "your_password"
+FIINQUANT_PLAN = "free"
+FIINQUANT_ENFORCE_PLAN_LIMITS = "true"

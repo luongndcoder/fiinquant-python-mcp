@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "fiinquant-sdk": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/luongndcoder/fiinquant-python-mcp",
+        "--with",
+        "/ABS/PATH/to/FiinQuantX.whl",
+        "fiinquant-mcp"
+      ],
+      "env": {
+        "FIINQUANT_USERNAME": "your@email.com",
+        "FIINQUANT_PASSWORD": "your_password",
+        "FIINQUANT_PLAN": "free",
+        "FIINQUANT_ENFORCE_PLAN_LIMITS": "true"
+      }
+    }
+  }
+}

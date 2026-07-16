@@ -1,6 +1,13 @@
 # fiinquant-mcp (personal)
 
-Personal **resilient** MCP server wrapping the FiinQuant / **FiinQuantX** Python SDK for **Claude Desktop / Cursor / Grok CLI** (stdio).
+Personal **resilient** MCP server wrapping the FiinQuant / **FiinQuantX** Python SDK for multiple clients over **stdio**:
+
+| Client | Config | Example name |
+|--------|--------|----------------|
+| **Codex CLI** | `~/.codex/config.toml` | `fiinquant-sdk` |
+| **Grok CLI** | `~/.grok/config.toml` | `fiinquant` |
+| **Cursor / Claude Desktop** | `mcp.json` | `fiinquant-sdk` |
+| **uvx** | any stdio host | inject SDK via `--with` |
 
 > Not an official FiinGroup/FiinQuant product. Domain tool names match official FiinQuant MCP; personal extras keep the `fq_` prefix.
 
@@ -12,8 +19,8 @@ Personal **resilient** MCP server wrapping the FiinQuant / **FiinQuantX** Python
 
 ```mermaid
 flowchart TB
-  subgraph Client["MCP Client"]
-    A["Claude Desktop / Cursor / Grok CLI"]
+  subgraph Client["MCP Clients (stdio JSON-RPC)"]
+    A["Codex CLI · Grok CLI · Cursor · Claude Desktop"]
   end
 
   subgraph MCP["fiinquant-mcp process (stdio)"]
@@ -49,19 +56,65 @@ flowchart TB
 
 ## Quick start
 
-### 1. Install FiinQuantX SDK (required for live data)
+### 1. Shared prerequisites
 
 ```bash
-# Same Python that will run the MCP, e.g. system 3.11:
-pip install FiinQuantX   # or your private wheel from FiinQuant portal
-python -c "import FiinQuantX; print('OK')"
+# Same Python that will run the MCP (example: system 3.11)
+python3 -m pip install FiinQuantX          # or private wheel from portal
+python3 -m pip install -e /path/to/fiinquant-python-mcp
+python3 -c "import FiinQuantX, fiinquant_mcp; print('OK')"
 ```
 
-SDK is **not** on public PyPI for everyone — install from your FiinQuant account package / wheel.
+SDK is private — not always on public PyPI. **One Python must have both** `FiinQuantX` and `fiinquant_mcp`.
 
-### 2. Grok CLI (recommended on this machine)
+Sample configs live under [`config/`](config/):
 
-If SDK is on system Python 3.11:
+| File | Client |
+|------|--------|
+| [`mcp.codex.example.toml`](config/mcp.codex.example.toml) | Codex CLI |
+| [`mcp.grok.example.toml`](config/mcp.grok.example.toml) | Grok CLI |
+| [`mcp.cursor.example.json`](config/mcp.cursor.example.json) | Cursor / Claude Desktop |
+| [`mcp.uvx.example.json`](config/mcp.uvx.example.json) | uvx isolated env |
+| [`mcp.example.json`](config/mcp.example.json) | Generic JSON (uvx git) |
+
+Naming tip: use **`fiinquant-sdk`** for this personal MCP. Keep **`fiinquant-local`** if you still run the official remote proxy (`npx fiinquant-mcp-proxy`).
+
+### 2. Codex CLI
+
+```bash
+codex mcp add fiinquant-sdk \
+  --env FIINQUANT_USERNAME='your@email.com' \
+  --env FIINQUANT_PASSWORD='your_password' \
+  --env FIINQUANT_PLAN=free \
+  --env FIINQUANT_ENFORCE_PLAN_LIMITS=true \
+  -- /Library/Frameworks/Python.framework/Versions/3.11/bin/python3 -m fiinquant_mcp
+
+codex mcp list
+# open a new Codex session and call tools (get_stock_prices, …)
+```
+
+Or paste TOML from `config/mcp.codex.example.toml` into `~/.codex/config.toml`.
+
+```toml
+[mcp_servers.fiinquant-sdk]
+command = "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3"
+args = ["-m", "fiinquant_mcp"]
+
+[mcp_servers.fiinquant-sdk.env]
+FIINQUANT_USERNAME = "your@email.com"
+FIINQUANT_PASSWORD = "your_password"
+FIINQUANT_PLAN = "free"
+FIINQUANT_ENFORCE_PLAN_LIMITS = "true"
+```
+
+### 3. Grok CLI
+
+```bash
+# After pip install -e . on the same Python as FiinQuantX
+# Edit ~/.grok/config.toml — see config/mcp.grok.example.toml
+
+grok mcp doctor fiinquant
+```
 
 ```toml
 # ~/.grok/config.toml
@@ -78,19 +131,18 @@ FIINQUANT_PLAN = "free"
 FIINQUANT_ENFORCE_PLAN_LIMITS = "true"
 ```
 
-```bash
-pip install -e /path/to/fiinquant-python-mcp   # same Python as FiinQuantX
-grok mcp doctor fiinquant
-```
+### 4. Cursor / Claude Desktop
 
-### 3. uvx (isolated env)
+Copy [`config/mcp.cursor.example.json`](config/mcp.cursor.example.json) into Cursor MCP settings or Claude `claude_desktop_config.json` (paths differ by OS). Point `command` at the Python that has **both** packages.
 
-Only works if FiinQuantX is injected into the uvx env:
+### 5. uvx (isolated env)
+
+Only if you inject the private SDK wheel:
 
 ```json
 {
   "mcpServers": {
-    "fiinquant": {
+    "fiinquant-sdk": {
       "command": "uvx",
       "args": [
         "--from", "git+https://github.com/luongndcoder/fiinquant-python-mcp",
@@ -106,6 +158,33 @@ Only works if FiinQuantX is injected into the uvx env:
   }
 }
 ```
+
+### Client comparison
+
+```mermaid
+flowchart LR
+  subgraph Hosts
+    CX[Codex CLI<br/>~/.codex/config.toml]
+    GX[Grok CLI<br/>~/.grok/config.toml]
+    CR[Cursor / Claude<br/>mcp.json]
+  end
+
+  subgraph Stdio
+    M["python -m fiinquant_mcp<br/>or uvx … fiinquant-mcp"]
+  end
+
+  CX --> M
+  GX --> M
+  CR --> M
+  M --> S[FiinQuantX + APIs]
+```
+
+| | Codex | Grok | Cursor/Claude |
+|--|-------|------|---------------|
+| Config file | `~/.codex/config.toml` | `~/.grok/config.toml` | JSON MCP settings |
+| CLI add | `codex mcp add … -- cmd` | `grok mcp add` / edit TOML | UI or JSON edit |
+| Suggested server name | `fiinquant-sdk` | `fiinquant` | `fiinquant-sdk` |
+| vs official proxy | Can coexist with `fiinquant-local` (npx proxy) | Independent | Independent |
 
 ---
 

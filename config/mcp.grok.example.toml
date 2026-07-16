@@ -1,0 +1,15 @@
+# Grok CLI — ~/.grok/config.toml
+# Same Python that has FiinQuantX installed.
+
+[mcp_servers.fiinquant]
+command = "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3"
+args = ["-m", "fiinquant_mcp"]
+enabled = true
+startup_timeout_sec = 60
+tool_timeout_sec = 120
+
+[mcp_servers.fiinquant.env]
+FIINQUANT_USERNAME = "your@email.com"
+FIINQUANT_PASSWORD = "your_password"
+FIINQUANT_PLAN = "free"
+FIINQUANT_ENFORCE_PLAN_LIMITS = "true"
